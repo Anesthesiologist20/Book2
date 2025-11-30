@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anesthesia Library & Reader</title>
+    <title>Anesthesia Library & Pro Reader</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -42,19 +42,34 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
-        /* Reader Specific Styles */
-        .outline-item {
-            cursor: pointer; padding: 6px 12px; font-size: 0.85rem;
-            border-left: 2px solid transparent; transition: all 0.2s;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        /* --- Collapsible Tree CSS (TOC) --- */
+        .outline-node { display: flex; flex-direction: column; }
+        
+        .outline-row {
+            display: flex; align-items: center; padding: 6px 8px; cursor: pointer;
+            border-radius: 4px; transition: background 0.2s; font-size: 0.85rem;
+            color: #374151; /* gray-700 */
         }
-        .outline-item:hover { background-color: rgba(37, 99, 235, 0.1); color: #2563eb; }
-        .dark .outline-item:hover { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .dark .outline-row { color: #e5e7eb; /* gray-200 */ }
         
-        .outline-level-0 { padding-left: 12px; font-weight: 600; }
-        .outline-level-1 { padding-left: 24px; }
-        .outline-level-2 { padding-left: 36px; color: #64748b; }
-        
+        .outline-row:hover { background-color: rgba(37, 99, 235, 0.1); color: #2563eb; }
+        .dark .outline-row:hover { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+
+        /* Arrow Icon */
+        .toggle-icon {
+            width: 16px; height: 16px; margin-right: 6px; transition: transform 0.2s ease;
+            color: #9ca3af; flex-shrink: 0;
+        }
+        .toggle-icon.expanded { transform: rotate(90deg); color: #2563eb; }
+        .toggle-icon.invisible { visibility: hidden; }
+
+        /* Children Container (Hidden by default) */
+        .children-container {
+            display: none; padding-left: 18px; border-left: 1px solid #e5e7eb; margin-left: 7px;
+        }
+        .dark .children-container { border-color: #374151; }
+        .children-container.open { display: block; }
+
         /* Loader */
         .loader {
             border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3b82f6;
@@ -109,7 +124,7 @@
                 </div>
 
                 <div class="book-item group cursor-pointer" data-category="major"
-                     onclick="openReader('books/barash_clinical.pdf', 'Clinical Anesthesia (Barash)')">
+                     onclick="openReader('books/barash.pdf', 'Clinical Anesthesia (Barash)')">
                     <div class="relative aspect-[2/3] mb-3 overflow-hidden rounded-md bg-gray-200 book-card-hover">
                         <img src="https://drive.google.com/thumbnail?id=1-fxhXAtaOtazkfIwMnDCe5Gh4y7Lmeg2&sz=w600" 
                              class="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" 
@@ -250,7 +265,7 @@
                 renderOutline();
             } catch (error) {
                 console.error(error);
-                alert('Error: File not found or corrupt.\n\nCheck if "books/' + url.split('/').pop() + '" exists.');
+                alert('Error: File not found or corrupt.\n\nMake sure the file name is EXACTLY:\n' + url);
                 closeReader();
             }
         }
@@ -259,11 +274,7 @@
             readerView.classList.add('hidden');
             readerView.classList.remove('flex');
             libraryView.classList.remove('hidden');
-            // Cleanup to save memory
-            if(pdfDoc) {
-                pdfDoc.destroy();
-                pdfDoc = null;
-            }
+            if(pdfDoc) { pdfDoc.destroy(); pdfDoc = null; }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById('outlineContainer').innerHTML = '';
         }
@@ -304,56 +315,98 @@
         document.getElementById('zoomIn').addEventListener('click', () => { scale += 0.2; queueRenderPage(pageNum); });
         document.getElementById('zoomOut').addEventListener('click', () => { if(scale > 0.4) scale -= 0.2; queueRenderPage(pageNum); });
 
-        // Sidebar / Outline
         document.getElementById('toggleSidebar').addEventListener('click', () => {
-            const sb = document.getElementById('sidebar');
-            sb.classList.toggle('-translate-x-full');
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
         });
 
+        // --- Collapsible Tree Logic ---
         async function renderOutline() {
             const container = document.getElementById('outlineContainer');
             const loader = document.getElementById('tocLoader');
             container.innerHTML = '';
             loader.classList.remove('hidden');
 
-            const outline = await pdfDoc.getOutline();
-            loader.classList.add('hidden');
+            try {
+                const outline = await pdfDoc.getOutline();
+                loader.classList.add('hidden');
 
-            if (!outline) {
-                container.innerHTML = '<div class="text-gray-400 text-center text-sm mt-4">No outline found</div>';
-                return;
-            }
+                if (!outline) {
+                    container.innerHTML = '<div class="text-gray-400 text-center text-sm mt-4">No outline found</div>';
+                    return;
+                }
 
-            function buildTree(items, level = 0) {
-                const div = document.createElement('div');
-                items.forEach(item => {
-                    const el = document.createElement('div');
-                    el.textContent = item.title;
-                    el.className = `outline-item outline-level-${level}`;
-                    el.onclick = async () => {
-                         if (Array.isArray(item.dest)) {
-                            const dest = item.dest;
-                            const ref = dest[0];
-                            const pageIndex = await pdfDoc.getPageIndex(ref);
-                            pageNum = pageIndex + 1;
-                            queueRenderPage(pageNum);
-                         } else if (typeof item.dest === 'string') {
-                             const dest = await pdfDoc.getDestination(item.dest);
-                             const ref = dest[0];
-                             const pageIndex = await pdfDoc.getPageIndex(ref);
-                             pageNum = pageIndex + 1;
-                             queueRenderPage(pageNum);
-                         }
-                         if(window.innerWidth < 768) document.getElementById('sidebar').classList.add('-translate-x-full');
-                    };
-                    div.appendChild(el);
-                    if (item.items && item.items.length) {
-                        div.appendChild(buildTree(item.items, level + 1));
-                    }
-                });
-                return div;
+                function buildTree(items) {
+                    const wrapper = document.createElement('div');
+                    items.forEach(item => {
+                        const node = document.createElement('div');
+                        node.className = 'outline-node';
+
+                        // Row
+                        const row = document.createElement('div');
+                        row.className = 'outline-row';
+
+                        // Icon
+                        const hasChildren = item.items && item.items.length > 0;
+                        const icon = document.createElement('div');
+                        icon.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>';
+                        icon.className = `toggle-icon ${hasChildren ? '' : 'invisible'}`;
+                        
+                        // Title
+                        const title = document.createElement('span');
+                        title.textContent = item.title;
+                        title.className = 'truncate flex-1 ml-1';
+
+                        row.appendChild(icon);
+                        row.appendChild(title);
+                        node.appendChild(row);
+
+                        // Children
+                        if (hasChildren) {
+                            const childrenDiv = buildTree(item.items);
+                            childrenDiv.className = 'children-container'; 
+                            node.appendChild(childrenDiv);
+
+                            // Toggle Event
+                            icon.onclick = (e) => {
+                                e.stopPropagation();
+                                childrenDiv.classList.toggle('open');
+                                icon.classList.toggle('expanded');
+                            };
+                        }
+
+                        // Navigation Event
+                        row.onclick = async () => {
+                            if (Array.isArray(item.dest)) {
+                                const dest = item.dest;
+                                const ref = dest[0];
+                                const pageIndex = await pdfDoc.getPageIndex(ref);
+                                pageNum = pageIndex + 1;
+                                queueRenderPage(pageNum);
+                            } else if (typeof item.dest === 'string') {
+                                const dest = await pdfDoc.getDestination(item.dest);
+                                const ref = dest[0];
+                                const pageIndex = await pdfDoc.getPageIndex(ref);
+                                pageNum = pageIndex + 1;
+                                queueRenderPage(pageNum);
+                            }
+                            // Close sidebar on mobile
+                            if(window.innerWidth < 768) document.getElementById('sidebar').classList.add('-translate-x-full');
+                            
+                            // Auto open folder if closed
+                            if (hasChildren && !node.querySelector('.children-container').classList.contains('open')) {
+                                node.querySelector('.children-container').classList.add('open');
+                                icon.classList.add('expanded');
+                            }
+                        };
+                        wrapper.appendChild(node);
+                    });
+                    return wrapper;
+                }
+                container.appendChild(buildTree(outline));
+            } catch (error) {
+                console.error(error);
+                loader.classList.add('hidden');
             }
-            container.appendChild(buildTree(outline));
         }
     </script>
 </body>
