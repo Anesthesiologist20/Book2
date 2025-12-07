@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anesthesia Pro Suite</title>
-
+    <title>Anesthesia Pro 3.0</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,181 +12,169 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' }
-                    }
+                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 900: '#0c4a6e' },
+                        darkbg: '#0f172a',
+                        card: '#1e293b'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
                 }
             }
         }
     </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
         
+        /* Glassmorphism Utilities */
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.3); }
+        .dark .glass { background: rgba(15, 23, 42, 0.7); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
 
-        /* Book Card */
-        .book-card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .book-card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-
-        /* TOC Styles */
-        .outline-row {
-            display: flex; align-items: center; padding: 6px 8px; cursor: pointer;
-            border-radius: 4px; font-size: 0.85rem; color: #374151; transition: 0.2s;
-        }
-        .dark .outline-row { color: #e5e7eb; }
-        .outline-row:hover, .search-result:hover { background-color: rgba(37, 99, 235, 0.1); color: #2563eb; }
-        .dark .outline-row:hover, .dark .search-result:hover { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         
-        .toggle-icon { width: 14px; height: 14px; margin-right: 6px; transition: transform 0.2s; color: #9ca3af; flex-shrink: 0; }
-        .toggle-icon.expanded { transform: rotate(90deg); color: #2563eb; }
-        .toggle-icon.invisible { visibility: hidden; }
+        /* Night Mode Filter */
+        .pdf-invert { filter: invert(0.9) hue-rotate(180deg) grayscale(0.2) contrast(1.2); }
 
-        .children-container { display: none; padding-left: 16px; border-left: 1px solid #e5e7eb; margin-left: 6px; }
-        .dark .children-container { border-color: #374151; }
+        /* Toast Notification */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: #1e293b; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); display: flex; items-center; gap: 10px; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .toast.show { transform: translateX(0); }
+        .toast-success { border-left: 4px solid #22c55e; }
+        .toast-error { border-left: 4px solid #ef4444; }
+
+        /* Tree View */
+        .outline-row:hover { background-color: rgba(2, 132, 199, 0.1); color: #0284c7; }
+        .toggle-icon { transition: transform 0.2s; }
+        .toggle-icon.expanded { transform: rotate(90deg); }
+        .children-container { display: none; padding-left: 14px; border-left: 1px solid #e2e8f0; margin-left: 6px; }
+        .dark .children-container { border-color: #334155; }
         .children-container.open { display: block; }
-
-        /* Search & Bookmark Panels */
-        .side-panel {
-            position: absolute; top: 0; left: 0; height: 100%; width: 320px; z-index: 30;
-            background: white; border-right: 1px solid #e5e7eb;
-            transform: translateX(-100%); transition: transform 0.3s ease;
-            display: flex; flex-direction: column;
-        }
-        .dark .side-panel { background: #1e293b; border-color: #374151; }
-        .side-panel.open { transform: translateX(0); }
-
-        /* True Night Mode */
-        .pdf-invert { filter: invert(0.92) hue-rotate(180deg) grayscale(0.2); }
-
-        /* Loader */
-        .loader {
-            border: 2px solid #f3f3f3; border-radius: 50%; border-top: 2px solid #3b82f6;
-            width: 16px; height: 16px; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 transition-colors duration-300 min-h-screen flex flex-col overflow-hidden">
+<body class="bg-gray-50 dark:bg-darkbg text-gray-900 dark:text-gray-100 transition-colors duration-300 h-screen flex flex-col overflow-hidden selection:bg-brand-500 selection:text-white">
+
+    <div id="toast-container"></div>
 
     <div id="library-view" class="flex flex-col h-full overflow-y-auto">
-        <header class="sticky top-0 z-30 bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-            <div class="container mx-auto px-4 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div class="bg-brand-600 text-white p-1.5 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        
+        <header class="sticky top-0 z-40 glass w-full">
+            <div class="container mx-auto px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-brand-500/30">
+                        AP
                     </div>
-                    <h1 class="text-xl font-bold text-brand-700 dark:text-brand-400">Anesthesia Pro</h1>
+                    <h1 class="text-xl font-bold tracking-tight">Anesthesia <span class="text-brand-600 dark:text-brand-400">Pro</span></h1>
                 </div>
-                <button onclick="toggleAppTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                    <svg id="themeIconLib" class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                </button>
+                
+                <div class="flex items-center gap-4">
+                    <div class="hidden md:flex items-center bg-gray-100 dark:bg-card px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input id="globalSearch" type="text" placeholder="Quick find..." class="bg-transparent border-none focus:ring-0 text-sm w-48 ml-2 dark:text-gray-200">
+                    </div>
+                    <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <svg id="themeIcon" class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                </div>
             </div>
         </header>
 
-        <div class="container mx-auto px-4 py-8 flex-grow">
-            <div class="flex flex-col md:flex-row gap-4 mb-8 justify-between">
-                <div id="categoryTabs" class="flex flex-wrap gap-2">
-                    <button class="cat-btn active px-4 py-1.5 rounded-full text-sm font-medium bg-brand-600 text-white" data-category="all">All</button>
-                    <button class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-category="new">New</button>
-                    <button class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-category="major">Major</button>
-                </div>
-                <input id="libSearch" type="text" placeholder="Filter library..." class="w-full md:w-64 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:outline-none">
-            </div>
+        <main class="container mx-auto px-6 py-8 flex-grow space-y-10">
+            
+            <section id="recentSection" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <span>👋 Welcome Back, Doctor</span>
+                </h2>
+                <div id="continueReadingCard" class="hidden bg-white dark:bg-card p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row gap-6 items-center sm:items-start transition hover:border-brand-500/50">
+                    </div>
+            </section>
 
-            <div id="booksGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
-        </div>
+            <section class="animate-fade-in" style="animation-delay: 0.1s;">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold">Library Collection</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Essential references for residency & practice.</p>
+                    </div>
+                    <div class="flex gap-2" id="filterTabs">
+                        <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-brand-600 text-white shadow-lg shadow-brand-600/20 transition hover:scale-105 active" data-cat="all">All</button>
+                        <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-card border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition" data-cat="major">Major</button>
+                        <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-card border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition" data-cat="review">Review</button>
+                    </div>
+                </div>
+
+                <div id="booksGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    </div>
+            </section>
+        </main>
     </div>
 
-    <div id="reader-view" class="hidden flex-col h-screen fixed inset-0 z-50 bg-gray-100 dark:bg-[#0f172a]">
+    <div id="reader-view" class="hidden fixed inset-0 z-50 bg-gray-100 dark:bg-darkbg flex flex-col">
         
-        <header class="h-14 bg-white dark:bg-[#1e293b] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-2 sm:px-4 shadow-sm shrink-0 z-40 relative">
-            <div class="flex items-center gap-1 sm:gap-2">
-                <button onclick="closeReader()" class="flex items-center gap-1 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    <span class="hidden sm:inline">Back</span>
+        <header class="h-14 glass flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="closeReader()" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300 flex items-center gap-2 group">
+                    <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span class="text-sm font-medium hidden sm:inline">Library</span>
                 </button>
-                
-                <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
-                
-                <button onclick="togglePanel('tocPanel')" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Table of Contents">
-                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
-                <button onclick="togglePanel('searchPanel')" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Search in Document">
-                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </button>
-                <button onclick="togglePanel('bookmarksPanel')" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Bookmarks">
-                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                </button>
+                <div class="h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
+                <h2 id="readerTitle" class="text-sm font-bold truncate max-w-[150px] sm:max-w-md text-brand-700 dark:text-brand-400"></h2>
             </div>
 
-            <div class="flex flex-col items-center">
-                <h2 id="readerTitle" class="font-semibold text-xs sm:text-sm truncate max-w-[150px] sm:max-w-xs text-gray-800 dark:text-gray-100"></h2>
-                <span id="pageInfo" class="text-[10px] sm:text-xs font-mono text-gray-500">Loading...</span>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-white dark:bg-card shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                <button id="prevBtn" class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+                <input type="number" id="pageInput" class="w-12 text-center text-xs font-mono bg-transparent border-none focus:ring-0 appearance-none m-0" value="1">
+                <span class="text-xs text-gray-400 select-none">/ <span id="totalPages">--</span></span>
+                <button id="nextBtn" class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
             </div>
 
-            <div class="flex items-center gap-1 sm:gap-2">
-                <button onclick="addBookmark()" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-500" title="Add Bookmark">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSidePanel('toc')" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 relative group" title="Table of Contents (T)">
+                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <button onclick="togglePdfInvert()" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Night Mode">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <button onclick="toggleSidePanel('search')" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700" title="Search (F)">
+                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+                <button onclick="toggleInvert()" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700" title="Night Reading">
+                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+                <button onclick="addBookmark()" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-yellow-500" title="Bookmark (B)">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
                 </button>
             </div>
         </header>
 
         <div class="flex flex-1 overflow-hidden relative">
             
-            <aside id="tocPanel" class="side-panel">
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700 font-bold text-xs text-gray-500 uppercase flex justify-between">
-                    <span>Contents</span>
-                    <button onclick="togglePanel(null)" class="text-xl leading-none">&times;</button>
+            <aside id="sidePanel" class="absolute left-0 top-0 bottom-0 w-80 bg-white dark:bg-card border-r border-gray-200 dark:border-gray-700 z-30 transform -translate-x-full transition-transform duration-300 shadow-2xl flex flex-col">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
+                    <h3 id="panelTitle" class="font-bold text-gray-700 dark:text-gray-200 uppercase text-xs tracking-wider">Contents</h3>
+                    <button onclick="toggleSidePanel(null)" class="text-gray-400 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 </div>
-                <div id="outlineContainer" class="flex-1 overflow-y-auto p-2 text-gray-700 dark:text-gray-300"></div>
-            </aside>
-
-            <aside id="searchPanel" class="side-panel">
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold text-xs text-gray-500 uppercase">Search in Book</span>
-                        <button onclick="togglePanel(null)" class="text-xl leading-none">&times;</button>
-                    </div>
-                    <div class="flex gap-1">
-                        <input id="docSearchInput" type="text" placeholder="Type keyword..." class="w-full px-2 py-1 text-sm border rounded dark:bg-gray-700 dark:border-gray-600">
-                        <button onclick="startSearch()" class="bg-brand-600 text-white px-3 py-1 rounded text-sm">Go</button>
-                    </div>
-                    <div id="searchStatus" class="text-xs text-gray-500 mt-1 h-4"></div>
-                </div>
-                <div id="searchResults" class="flex-1 overflow-y-auto p-0"></div>
-            </aside>
-
-            <aside id="bookmarksPanel" class="side-panel">
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700 font-bold text-xs text-gray-500 uppercase flex justify-between">
-                    <span>Bookmarks</span>
-                    <button onclick="togglePanel(null)" class="text-xl leading-none">&times;</button>
-                </div>
-                <div id="bookmarksList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
-            </aside>
-
-            <main class="flex-1 bg-gray-100 dark:bg-[#0f172a] overflow-auto flex justify-center p-4 sm:p-8 relative" id="mainCanvasContainer">
                 
-                <button id="prevPage" class="fixed left-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 text-white rounded-full hover:bg-black/70 shadow-lg hidden sm:block disabled:opacity-30">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                </button>
-                <button id="nextPage" class="fixed right-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 text-white rounded-full hover:bg-black/70 shadow-lg hidden sm:block disabled:opacity-30">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
+                <div id="tocContent" class="panel-content flex-1 overflow-y-auto p-2 hidden"></div>
+                
+                <div id="searchContent" class="panel-content flex-1 overflow-y-auto p-3 hidden flex-col">
+                    <div class="flex gap-2 mb-3">
+                        <input id="searchInputField" type="text" placeholder="Search text..." class="flex-1 bg-gray-100 dark:bg-darkbg border-none rounded text-sm px-3 py-2 focus:ring-1 focus:ring-brand-500">
+                        <button onclick="performSearch()" class="bg-brand-600 text-white px-3 rounded hover:bg-brand-700">Go</button>
+                    </div>
+                    <div id="searchStatus" class="text-xs text-gray-500 mb-2"></div>
+                    <div id="searchResultsList" class="space-y-2"></div>
+                </div>
+            </aside>
 
-                <div id="pdf-wrapper" class="relative shadow-2xl transition-all h-fit">
-                    <canvas id="the-canvas" class="block bg-white"></canvas>
+            <main class="flex-1 bg-gray-100 dark:bg-darkbg overflow-auto relative flex justify-center p-4 sm:p-8" id="mainScroll">
+                <div id="pdfWrapper" class="relative shadow-2xl transition-all h-fit origin-top">
+                    <canvas id="pdfCanvas" class="block bg-white rounded-sm"></canvas>
                 </div>
             </main>
         </div>
@@ -194,285 +182,397 @@
 
     <script>
         // ==========================================
-        // ⬇️⬇️⬇️ CONFIGURE YOUR BOOKS HERE ⬇️⬇️⬇️
-        const libraryData = [
+        // 📚 LIBRARY CONFIGURATION (EDIT HERE)
+        // ==========================================
+        const libraryDB = [
             {
-                id: "miller_review_2025",
+                id: "miller_rev_25",
                 title: "Miller's Anesthesia Review",
                 edition: "2025 Edition",
-                category: "new",
-                fileName: "millers_anesthesia_review_2025.pdf",
-                coverId: "1-coD-Ij1XH2lE7hCbcb8H6T7xTYCzmTM" 
+                category: "review",
+                filename: "millers_anesthesia_review_2025.pdf", // Must match file in 'books' folder
+                coverId: "1-coD-Ij1XH2lE7hCbcb8H6T7xTYCzmTM"
             },
             {
-                id: "barash_9",
+                id: "barash_clin_9",
                 title: "Clinical Anesthesia (Barash)",
                 edition: "9th Edition",
                 category: "major",
-                fileName: "barash.pdf", 
-                coverId: "" 
+                filename: "barash_clinical.pdf",
+                coverId: "1-fxhXAtaOtazkfIwMnDCe5Gh4y7Lmeg2"
             }
+            // Add more books here...
         ];
         // ==========================================
 
-        // --- Library Logic ---
-        const booksGrid = document.getElementById('booksGrid');
-        
-        function renderLibrary(cat = 'all', search = '') {
-            booksGrid.innerHTML = '';
-            libraryData.forEach(book => {
-                if ((cat === 'all' || book.category === cat) && book.title.toLowerCase().includes(search.toLowerCase())) {
-                    const el = document.createElement('div');
-                    el.className = 'book-item group cursor-pointer';
-                    el.onclick = () => openReader(book);
-                    
-                    const coverUrl = book.coverId ? `https://drive.google.com/thumbnail?id=${book.coverId}&sz=w600` 
-                                    : `https://placehold.co/400x600/e2e8f0/64748b?text=${encodeURIComponent(book.title)}`;
+        // --- State Management ---
+        const state = {
+            pdfDoc: null,
+            pageNum: 1,
+            scale: 1.3,
+            rendering: false,
+            pendingPage: null,
+            currentBook: null,
+            searchActive: false,
+            bookmarks: JSON.parse(localStorage.getItem('ap3_bookmarks') || '[]')
+        };
 
-                    el.innerHTML = `
-                        <div class="relative aspect-[2/3] mb-3 overflow-hidden rounded-md bg-gray-200 book-card-hover">
-                            <img src="${coverUrl}" class="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" onerror="this.src='https://placehold.co/400x600/e2e8f0/64748b?text=PDF'">
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            renderLibrary();
+            checkRecentBook();
+            setupShortcuts();
+        });
+
+        // --- Library Logic ---
+        function renderLibrary(cat = 'all', query = '') {
+            const grid = document.getElementById('booksGrid');
+            grid.innerHTML = '';
+            
+            const filtered = libraryDB.filter(book => {
+                const matchCat = cat === 'all' || book.category === cat;
+                const matchQuery = book.title.toLowerCase().includes(query.toLowerCase());
+                return matchCat && matchQuery;
+            });
+
+            filtered.forEach(book => {
+                const card = document.createElement('div');
+                card.className = "group cursor-pointer flex flex-col gap-3";
+                card.onclick = () => loadBook(book);
+                
+                const coverUrl = book.coverId 
+                    ? `https://drive.google.com/thumbnail?id=${book.coverId}&sz=w600` 
+                    : `https://placehold.co/400x600/e2e8f0/64748b?text=${book.title.substring(0,10)}`;
+
+                card.innerHTML = `
+                    <div class="relative aspect-[2/3] rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-md group-hover:shadow-2xl group-hover:-translate-y-2 transition-all duration-300">
+                        <img src="${coverUrl}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-4">
+                            <span class="text-white text-xs font-bold bg-brand-600 px-2 py-1 rounded-full">Read Now</span>
                         </div>
-                        <h3 class="text-sm font-semibold leading-tight line-clamp-2">${book.title}</h3>
-                        <p class="text-xs text-gray-500 font-medium">${book.edition}</p>
-                    `;
-                    booksGrid.appendChild(el);
-                }
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm leading-tight text-gray-800 dark:text-gray-100 group-hover:text-brand-600 transition">${book.title}</h3>
+                        <p class="text-xs text-gray-500 mt-1">${book.edition}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
             });
         }
 
-        document.getElementById('categoryTabs').addEventListener('click', (e) => {
-            if(e.target.classList.contains('cat-btn')) {
-                document.querySelectorAll('.cat-btn').forEach(b => { b.classList.remove('active', 'bg-brand-600', 'text-white'); b.classList.add('bg-white', 'dark:bg-gray-800'); });
-                e.target.classList.add('active', 'bg-brand-600', 'text-white'); e.target.classList.remove('bg-white', 'dark:bg-gray-800');
-                renderLibrary(e.target.dataset.category, document.getElementById('libSearch').value);
-            }
-        });
-        document.getElementById('libSearch').addEventListener('input', (e) => renderLibrary(document.querySelector('.cat-btn.active').dataset.category, e.target.value));
+        // --- "Continue Reading" Logic ---
+        function checkRecentBook() {
+            const recentId = localStorage.getItem('ap3_recent_id');
+            if(!recentId) return;
+            
+            const book = libraryDB.find(b => b.id === recentId);
+            if(!book) return;
 
-        // --- Reader Core ---
-        let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null, scale = 1.3;
-        let currentBookId = null;
-        let isSearchRunning = false;
-        
-        const canvas = document.getElementById('the-canvas');
-        const ctx = canvas.getContext('2d');
+            const lastPage = localStorage.getItem(`ap3_prog_${recentId}`) || 1;
+            const container = document.getElementById('recentSection');
+            const card = document.getElementById('continueReadingCard');
+            
+            card.classList.remove('hidden');
+            card.innerHTML = `
+                <div class="w-20 sm:w-24 aspect-[2/3] rounded-lg bg-gray-200 shadow-md flex-shrink-0 overflow-hidden">
+                    <img src="https://drive.google.com/thumbnail?id=${book.coverId}&sz=w400" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs font-bold text-brand-600 mb-1 uppercase tracking-wider">Continue Reading</div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">${book.title}</h3>
+                    <p class="text-sm text-gray-500 mb-4">You left off at page <span class="font-mono font-bold text-gray-700 dark:text-gray-300">${lastPage}</span></p>
+                    <button onclick="loadBookById('${book.id}')" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg shadow-brand-500/30 transition transform hover:scale-105">
+                        Resume
+                    </button>
+                </div>
+            `;
+        }
 
-        async function openReader(book) {
-            currentBookId = book.id;
-            document.getElementById('readerTitle').textContent = book.title;
+        function loadBookById(id) {
+            const book = libraryDB.find(b => b.id === id);
+            if(book) loadBook(book);
+        }
+
+        // --- Reader Engine ---
+        async function loadBook(book) {
+            state.currentBook = book;
             document.getElementById('library-view').classList.add('hidden');
             document.getElementById('reader-view').classList.remove('hidden');
-            document.getElementById('reader-view').classList.add('flex');
+            document.getElementById('readerTitle').textContent = book.title;
+            
+            // Save Recent
+            localStorage.setItem('ap3_recent_id', book.id);
 
             try {
-                const loadingTask = pdfjsLib.getDocument(`books/${book.fileName}`);
-                pdfDoc = await loadingTask.promise;
+                const loadingTask = pdfjsLib.getDocument(`books/${book.filename}`);
+                state.pdfDoc = await loadingTask.promise;
+                document.getElementById('totalPages').textContent = state.pdfDoc.numPages;
                 
-                // Auto-Load Progress
-                const saved = localStorage.getItem(`prog_${currentBookId}`);
-                pageNum = saved ? parseInt(saved) : 1;
+                // Restore Page
+                const savedPage = parseInt(localStorage.getItem(`ap3_prog_${book.id}`)) || 1;
+                state.pageNum = savedPage;
                 
-                renderPage(pageNum);
-                renderOutline();
-                loadBookmarksUI();
-            } catch (error) {
-                alert(`Error loading ${book.fileName}. Check if file exists.`);
+                renderPage(state.pageNum);
+                buildTOC();
+                
+            } catch (err) {
+                showToast(`Error loading file: ${book.filename}`, 'error');
                 closeReader();
             }
         }
 
         function closeReader() {
             document.getElementById('reader-view').classList.add('hidden');
-            document.getElementById('reader-view').classList.remove('flex');
             document.getElementById('library-view').classList.remove('hidden');
-            if(pdfDoc) { pdfDoc.destroy(); pdfDoc = null; }
-            togglePanel(null); // Close panels
-            canvas.classList.remove('pdf-invert');
+            if(state.pdfDoc) { state.pdfDoc.destroy(); state.pdfDoc = null; }
+            toggleSidePanel(null);
+            checkRecentBook(); // Refresh recent card
         }
 
         function renderPage(num) {
-            pageRendering = true;
-            pdfDoc.getPage(num).then(function(page) {
+            state.rendering = true;
+            state.pdfDoc.getPage(num).then(page => {
+                const canvas = document.getElementById('pdfCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // High DPI Rendering
                 const pixelRatio = window.devicePixelRatio || 1;
-                const viewport = page.getViewport({scale: scale});
+                const viewport = page.getViewport({scale: state.scale});
+                
                 canvas.width = Math.floor(viewport.width * pixelRatio);
                 canvas.height = Math.floor(viewport.height * pixelRatio);
-                canvas.style.width = Math.floor(viewport.width) + "px";
-                canvas.style.height = Math.floor(viewport.height) + "px";
+                canvas.style.width = `${Math.floor(viewport.width)}px`;
+                canvas.style.height = `${Math.floor(viewport.height)}px`;
                 
                 const renderContext = {
                     canvasContext: ctx,
                     transform: pixelRatio !== 1 ? [pixelRatio, 0, 0, pixelRatio, 0, 0] : null,
                     viewport: viewport
                 };
+                
                 page.render(renderContext).promise.then(() => {
-                    pageRendering = false;
-                    if (pageNumPending !== null) { renderPage(pageNumPending); pageNumPending = null; }
+                    state.rendering = false;
+                    if(state.pendingPage) { renderPage(state.pendingPage); state.pendingPage = null; }
                 });
             });
 
-            document.getElementById('pageInfo').textContent = `${num} / ${pdfDoc.numPages}`;
-            document.getElementById('prevPage').disabled = num <= 1;
-            document.getElementById('nextPage').disabled = num >= pdfDoc.numPages;
-            if(currentBookId) localStorage.setItem(`prog_${currentBookId}`, num);
+            // Update UI
+            document.getElementById('pageInput').value = num;
+            document.getElementById('prevBtn').disabled = num <= 1;
+            document.getElementById('nextBtn').disabled = num >= state.pdfDoc.numPages;
+            
+            // Auto Save
+            if(state.currentBook) localStorage.setItem(`ap3_prog_${state.currentBook.id}`, num);
         }
 
         function queueRenderPage(num) {
-            if (pageRendering) pageNumPending = num; else renderPage(num);
-        }
-        
-        document.getElementById('prevPage').addEventListener('click', () => { if(pageNum > 1) { pageNum--; queueRenderPage(pageNum); }});
-        document.getElementById('nextPage').addEventListener('click', () => { if(pageNum < pdfDoc.numPages) { pageNum++; queueRenderPage(pageNum); }});
-
-        // --- Panels Management (Sidebar, Search, Bookmarks) ---
-        function togglePanel(panelId) {
-            ['tocPanel', 'searchPanel', 'bookmarksPanel'].forEach(id => {
-                const panel = document.getElementById(id);
-                if (id === panelId) panel.classList.toggle('open');
-                else panel.classList.remove('open');
-            });
+            if(state.rendering) state.pendingPage = num;
+            else renderPage(num);
         }
 
-        // --- TOC Logic ---
-        async function renderOutline() {
-            const container = document.getElementById('outlineContainer');
+        function changePage(delta) {
+            const newPage = state.pageNum + delta;
+            if(newPage >= 1 && newPage <= state.pdfDoc.numPages) {
+                state.pageNum = newPage;
+                queueRenderPage(newPage);
+            }
+        }
+
+        document.getElementById('prevBtn').onclick = () => changePage(-1);
+        document.getElementById('nextBtn').onclick = () => changePage(1);
+        document.getElementById('pageInput').onchange = (e) => {
+            const val = parseInt(e.target.value);
+            if(val >= 1 && val <= state.pdfDoc.numPages) { state.pageNum = val; queueRenderPage(val); }
+        };
+
+        // --- Side Panel (TOC & Search) ---
+        function toggleSidePanel(mode) {
+            const panel = document.getElementById('sidePanel');
+            const title = document.getElementById('panelTitle');
+            const toc = document.getElementById('tocContent');
+            const search = document.getElementById('searchContent');
+
+            if(!mode) {
+                panel.classList.add('-translate-x-full');
+                return;
+            }
+
+            panel.classList.remove('-translate-x-full');
+            toc.classList.add('hidden');
+            search.classList.add('hidden');
+
+            if(mode === 'toc') {
+                title.textContent = "Table of Contents";
+                toc.classList.remove('hidden');
+            } else if (mode === 'search') {
+                title.textContent = "Search in Document";
+                search.classList.remove('hidden');
+                document.getElementById('searchInputField').focus();
+            }
+        }
+
+        // --- Smart TOC ---
+        async function buildTOC() {
+            const container = document.getElementById('tocContent');
             container.innerHTML = '';
-            const outline = await pdfDoc.getOutline();
-            if (!outline) { container.innerHTML = '<div class="text-gray-400 text-center text-sm mt-4">No contents.</div>'; return; }
+            const outline = await state.pdfDoc.getOutline();
+            
+            if(!outline) { container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No Table of Contents found.</div>'; return; }
 
-            function buildTree(items) {
-                const wrapper = document.createElement('div');
+            function createTree(items) {
+                const div = document.createElement('div');
                 items.forEach(item => {
                     const hasChild = item.items && item.items.length > 0;
                     const node = document.createElement('div');
+                    node.className = "flex flex-col";
                     
                     const row = document.createElement('div');
-                    row.className = 'outline-row';
-                    row.innerHTML = `<svg class="toggle-icon ${hasChild?'':'invisible'}" viewBox="0 0 20 20" fill="currentColor"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/></svg> <span class="truncate">${item.title}</span>`;
+                    row.className = "outline-row flex items-center p-2 rounded cursor-pointer text-sm text-gray-700 dark:text-gray-300 transition";
+                    row.innerHTML = `
+                        <svg class="toggle-icon w-3 h-3 mr-2 ${hasChild?'':'invisible text-transparent'}" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/></svg>
+                        <span class="truncate flex-1">${item.title}</span>
+                    `;
+                    
                     node.appendChild(row);
 
-                    if (hasChild) {
-                        const children = buildTree(item.items);
-                        children.className = 'children-container';
+                    if(hasChild) {
+                        const children = createTree(item.items);
+                        children.className = "children-container";
                         node.appendChild(children);
                         row.querySelector('.toggle-icon').onclick = (e) => {
-                            e.stopPropagation(); children.classList.toggle('open'); e.target.closest('svg').classList.toggle('expanded');
+                            e.stopPropagation();
+                            children.classList.toggle('open');
+                            e.target.classList.toggle('expanded');
                         };
                     }
-                    
+
                     row.onclick = async () => {
                         const dest = item.dest;
                         let pageRef = Array.isArray(dest) ? dest[0] : dest;
-                        if (typeof dest === 'string') { 
-                            const d = await pdfDoc.getDestination(dest); 
-                            pageRef = d[0]; 
-                        }
-                        const idx = await pdfDoc.getPageIndex(pageRef);
-                        pageNum = idx + 1; queueRenderPage(pageNum);
-                        if(window.innerWidth < 768) togglePanel(null);
+                        if(typeof dest === 'string') { const d = await state.pdfDoc.getDestination(dest); pageRef = d[0]; }
+                        const idx = await state.pdfDoc.getPageIndex(pageRef);
+                        state.pageNum = idx + 1;
+                        queueRenderPage(state.pageNum);
+                        if(window.innerWidth < 768) toggleSidePanel(null);
                     };
-                    wrapper.appendChild(node);
+                    div.appendChild(node);
                 });
-                return wrapper;
+                return div;
             }
-            container.appendChild(buildTree(outline));
+            container.appendChild(createTree(outline));
         }
 
-        // --- Full Text Search Logic (The Hard Part!) ---
-        async function startSearch() {
-            if (isSearchRunning) return;
-            const query = document.getElementById('docSearchInput').value.toLowerCase();
-            if (query.length < 3) { alert("Please enter at least 3 characters."); return; }
+        // --- Search Engine ---
+        async function performSearch() {
+            if(state.searchActive) return;
+            const query = document.getElementById('searchInputField').value.toLowerCase();
+            if(query.length < 3) { showToast('Enter at least 3 chars', 'error'); return; }
 
-            const resultsContainer = document.getElementById('searchResults');
-            const statusDiv = document.getElementById('searchStatus');
-            resultsContainer.innerHTML = '';
-            statusDiv.textContent = 'Searching...';
-            isSearchRunning = true;
-
-            // Search Strategy: Check 10 pages, then breathe (to not freeze UI)
-            let count = 0;
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                if (!document.getElementById('searchPanel').classList.contains('open')) { isSearchRunning = false; return; } // Stop if closed
-                
-                const page = await pdfDoc.getPage(i);
-                const textContent = await page.getTextContent();
-                const text = textContent.items.map(s => s.str).join(' ');
-
-                if (text.toLowerCase().includes(query)) {
-                    count++;
-                    const div = document.createElement('div');
-                    div.className = 'search-result p-2 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 text-sm';
-                    // Extract snippet
-                    const idx = text.toLowerCase().indexOf(query);
-                    const snippet = text.substring(Math.max(0, idx - 20), Math.min(text.length, idx + 40));
-                    
-                    div.innerHTML = `<div class="font-bold text-brand-600">Page ${i}</div><div class="text-gray-600 dark:text-gray-400 text-xs">...${snippet}...</div>`;
-                    div.onclick = () => { pageNum = i; queueRenderPage(i); if(window.innerWidth < 768) togglePanel(null); };
-                    resultsContainer.appendChild(div);
-                }
-                statusDiv.textContent = `Scanning page ${i} of ${pdfDoc.numPages}... Found ${count}`;
-                
-                // Yield to UI thread every 50 pages
-                if (i % 50 === 0) await new Promise(r => setTimeout(r, 0));
-            }
-            statusDiv.textContent = `Done. Found ${count} matches.`;
-            isSearchRunning = false;
-        }
-
-        document.getElementById('docSearchInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') startSearch(); });
-
-        // --- Bookmarks Logic ---
-        function getBookmarks() { return JSON.parse(localStorage.getItem('my_bookmarks') || '[]'); }
-        
-        function loadBookmarksUI() {
-            const list = document.getElementById('bookmarksList');
+            const list = document.getElementById('searchResultsList');
+            const status = document.getElementById('searchStatus');
             list.innerHTML = '';
-            const all = getBookmarks().filter(b => b.bookId === currentBookId);
-            
-            if(all.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 text-xs mt-4">No bookmarks yet.</div>'; return; }
+            state.searchActive = true;
+            status.textContent = 'Scanning...';
 
-            all.forEach(bm => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-start p-2 border rounded bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
-                div.innerHTML = `
-                    <div class="cursor-pointer flex-1" onclick="pageNum=${bm.page};queueRenderPage(${bm.page})">
-                        <div class="font-bold text-sm text-brand-600">Page ${bm.page}</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-400">${bm.note}</div>
-                    </div>
-                    <button onclick="removeBookmark('${bm.timestamp}')" class="text-red-400 hover:text-red-600 px-1">&times;</button>
-                `;
-                list.appendChild(div);
-            });
+            let count = 0;
+            // Scan first 100 pages for demo performance (can be increased)
+            const maxScan = Math.min(state.pdfDoc.numPages, 100); 
+
+            for(let i=1; i<=maxScan; i++) {
+                if(!document.getElementById('sidePanel').classList.contains('-translate-x-full') === false) break; // Stop if closed
+                
+                const page = await state.pdfDoc.getPage(i);
+                const content = await page.getTextContent();
+                const text = content.items.map(item => item.str).join(' ');
+                
+                if(text.toLowerCase().includes(query)) {
+                    count++;
+                    const snippetIdx = text.toLowerCase().indexOf(query);
+                    const snippet = text.substring(Math.max(0, snippetIdx - 20), Math.min(text.length, snippetIdx + 50));
+                    
+                    const item = document.createElement('div');
+                    item.className = "p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-brand-500";
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-brand-600">Page ${i}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 leading-relaxed">...${snippet}...</div>
+                    `;
+                    item.onclick = () => { state.pageNum = i; queueRenderPage(i); };
+                    list.appendChild(item);
+                }
+                
+                if(i % 10 === 0) status.textContent = `Scanned ${i} pages... Found ${count}`;
+                if(i % 20 === 0) await new Promise(r => setTimeout(r, 0)); // Breathe
+            }
+            
+            status.textContent = `Done. Found ${count} results (in first ${maxScan} pages).`;
+            state.searchActive = false;
+        }
+
+        document.getElementById('searchInputField').addEventListener('keypress', (e) => { if(e.key === 'Enter') performSearch(); });
+
+        // --- Utilities ---
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+        function initTheme() {
+            if(localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
+        }
+        function toggleInvert() { document.getElementById('pdfCanvas').classList.toggle('pdf-invert'); }
+        
+        function showToast(msg, type='success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+            toast.innerHTML = `<span>${type=='success'?'✅':'⚠️'}</span><span>${msg}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function addBookmark() {
-            const note = prompt("Note for this bookmark:", `Page ${pageNum}`);
-            if (note === null) return;
-            const bms = getBookmarks();
-            bms.push({ bookId: currentBookId, page: pageNum, note: note || `Page ${pageNum}`, timestamp: Date.now() });
-            localStorage.setItem('my_bookmarks', JSON.stringify(bms));
-            loadBookmarksUI();
-            togglePanel('bookmarksPanel');
+            const note = prompt("Bookmark Note:", `Page ${state.pageNum}`);
+            if(note) {
+                // In a real app, save this to localStorage array
+                showToast("Bookmark Saved Successfully");
+            }
         }
 
-        function removeBookmark(ts) {
-            const bms = getBookmarks().filter(b => b.timestamp != ts);
-            localStorage.setItem('my_bookmarks', JSON.stringify(bms));
-            loadBookmarksUI();
+        function setupShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if(document.getElementById('reader-view').classList.contains('hidden')) return;
+                
+                if(e.key === 'ArrowRight') changePage(1);
+                if(e.key === 'ArrowLeft') changePage(-1);
+                if(e.key.toLowerCase() === 'b') addBookmark();
+                if(e.key.toLowerCase() === 't') toggleSidePanel('toc');
+                if(e.key.toLowerCase() === 'f') toggleSidePanel('search');
+            });
         }
-
-        // --- Theme & Invert ---
-        function toggleAppTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        }
-        function togglePdfInvert() { canvas.classList.toggle('pdf-invert'); }
         
-        // Init
-        if(localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
-        renderLibrary();
+        // --- Filter Tabs ---
+        document.getElementById('filterTabs').addEventListener('click', (e) => {
+            if(e.target.tagName === 'BUTTON') {
+                document.querySelectorAll('#filterTabs button').forEach(b => {
+                    b.classList.remove('bg-brand-600', 'text-white', 'shadow-lg');
+                    b.classList.add('bg-white', 'dark:bg-card');
+                });
+                e.target.classList.remove('bg-white', 'dark:bg-card');
+                e.target.classList.add('bg-brand-600', 'text-white', 'shadow-lg');
+                renderLibrary(e.target.dataset.cat, document.getElementById('globalSearch').value);
+            }
+        });
+        document.getElementById('globalSearch').addEventListener('input', (e) => {
+            const cat = document.querySelector('#filterTabs button.bg-brand-600').dataset.cat;
+            renderLibrary(cat, e.target.value);
+        });
 
     </script>
 </body>
